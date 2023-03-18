@@ -1,0 +1,46 @@
+version: "3"
+
+services:
+  api:
+    build:
+        dockerfile: Api.Dockerfile
+        context: .
+    networks:
+      - proxy
+    restart: on-failure
+    labels:
+      # Standard configuration
+      - "traefik.enable=true"
+      - "traefik.http.routers.fastapi.rule=Host(`api.mulaiduluaja.com`)"
+      - "traefik.http.services.fastapi.loadbalancer.server.port=8000"
+      - "traefik.docker.network=proxy"
+      # HTTPS configuration
+      - "traefik.http.routers.fastapi.tls=true"
+      - "traefik.http.routers.fastapi.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.fastapi.entrypoints=websecure"
+
+  frontend:
+    build:
+      dockerfile: Frontend.Dockerfile
+      context: .
+    networks:
+      - proxy
+    depends_on:
+      - api
+    restart: on-failure
+    labels:
+      # Standard configuration
+      - "traefik.enable=true"
+      # - "traefik.http.routers.webappfrontend.rule=Host(`mulaiduluaja.com`)"
+      - "traefik.http.routers.webappfrontend.rule=Host(`mulaiduluaja.com`) || Host(`www.mulaiduluaja.com`)"
+      - "traefik.http.services.webappfrontend.loadbalancer.server.port=80"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.webappfrontend.middlewares=redirect-www@file"
+      # HTTPS configuration
+      - "traefik.http.routers.webappfrontend.tls=true"
+      - "traefik.http.routers.webappfrontend.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.webappfrontend.entrypoints=websecure"
+
+networks:
+  proxy:
+    external: true
